@@ -30,6 +30,7 @@ public class LSAlgorithm {
         IndoorTrackerDatabaseHandler apdbhandler =  new IndoorTrackerDatabaseHandler
                 (mapViewActivityContext);
 
+
         /* Filters known APs from database */
         results = apdbhandler.filterKnownAPDB (results);
 
@@ -44,7 +45,7 @@ public class LSAlgorithm {
         else {
 
             /* Gets the X strongest RSS from X APs */
-            results = getStrongestRSS (results);
+            results = getStrongestRSSList (results);
 
             /* Translates RSS to distance by using estimated pathloss model and stores it onto
             'distanceCm' field in ScanResult */
@@ -79,13 +80,13 @@ public class LSAlgorithm {
     }
 
     /**
-     * Gets X strongest RSSs from X APs:
+     * Gets X strongest RSS list from X APs:
      *      Sorts ScanResult list in descending order by "level" field
      *      Gets the X first elements of the list by using subList
      * @param results WiFi scan results list with all the known AP data
      * @return WiFi scan results list with the X strongest APs
      */
-    private List<ScanResult> getStrongestRSS (List<ScanResult> results){
+    private List<ScanResult> getStrongestRSSList (List<ScanResult> results){
 
         /* Sorts the list by "level" field name */
         Collections.sort(results, new Comparator<ScanResult>() {
@@ -105,8 +106,8 @@ public class LSAlgorithm {
         });
 
         /* Gets the X first elements of the list in a new list */
-        int numberAcquiredAP = 4; // X = 4
-        List<ScanResult> strongestResults = results.subList(0, numberAcquiredAP);
+        int X = 4; // X = 4
+        List<ScanResult> strongestResults = results.subList(0, X);
 
         return strongestResults;
     }
@@ -117,8 +118,7 @@ public class LSAlgorithm {
         /* Gets pathloss model coefficients from Database */
         IndoorTrackerDatabaseHandler itdbh = new IndoorTrackerDatabaseHandler
                 (mapViewActivityContext);
-        double[] coefficients = new double[4];
-        coefficients = itdbh.getCoefficientsDB(idBssidApSelected);
+        double[] coefficients = itdbh.getCoefficientsDB(idBssidApSelected);
 
 
         /* Converts RSS to distance by applying these coefficients */

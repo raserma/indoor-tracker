@@ -202,14 +202,28 @@ public class IndoorTrackerDatabaseHandler extends SQLiteOpenHelper {
         return new Point (x, y);
     }
 
+    /**
+     * Gets coefficients [a b c d] from estimated pathloss model of BSSID selected
+     * @param idBssidApSelected BSSID selected
+     * @return coefficients [a b c d]
+     */
+
     public double[] getCoefficientsDB (int idBssidApSelected){
         SQLiteDatabase db = this.getReadableDatabase();
-        double[] coeff = new double[4];
+        double[] coefficients = new double[4];
+        Cursor cursor = db.query(TABLE_COEFFICIENTS, new String[]{KEY_COEFFICIENT_VALUE},
+                KEY_BSSID + "=?",
+                new String[]{String.valueOf(idBssidApSelected)}, null, null, null, null);
+        // There is at least one register
+        if (cursor.moveToFirst()) {
+            for (int i = 0; i < cursor.getCount(); i++) {
+                coefficients[i] = cursor.getDouble(0);
+                cursor.moveToNext();
+            }
+        }
+        db.close();
 
-
-        
-
-        return coeff;
+        return coefficients;
 
     }
     private String removeLastDigitBssid (String bssid){
@@ -310,8 +324,9 @@ public class IndoorTrackerDatabaseHandler extends SQLiteOpenHelper {
     }
 
     public void addCoefficientsDB(int id_BSSID, double[] coefficients) {
-        // If id_BSSID is already in table, update coefficients
-        // If id_BSSID is not in table, insert coefficients
+        // NEEDS TO BE DONE:
+        //      If id_BSSID is already in table, update coefficients
+        //      If id_BSSID is not in table, insert coefficients
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues coefficientValues = new ContentValues();
         coefficientValues.put(KEY_BSSID, id_BSSID);
