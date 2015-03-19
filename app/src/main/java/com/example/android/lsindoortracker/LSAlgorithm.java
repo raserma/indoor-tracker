@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Point;
 import android.net.wifi.ScanResult;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -30,7 +31,6 @@ public class LSAlgorithm {
         IndoorTrackerDatabaseHandler apdbhandler =  new IndoorTrackerDatabaseHandler
                 (mapViewActivityContext);
 
-
         /* Filters known APs from database */
         results = apdbhandler.filterKnownAPDB (results);
 
@@ -45,15 +45,15 @@ public class LSAlgorithm {
         else {
 
             /* Gets the X strongest RSS from X APs */
-            results = getStrongestRSSList (results);
+            results = getStrongestRSSList(results);
 
-            /* Translates RSS to distance by using estimated pathloss model and stores it onto
-            'distanceCm' field in ScanResult */
-            results = translatesRSStoDistance (results, idBssidApSelected);
+            /* Translates RSS to distance by using estimated pathloss model */
+            List<APAlgorithmData> algorithmInputDataList
+                    = translatesRSStoDistance (results, idBssidApSelected);
 
 
             /* Least Square algorithm */
-            Point userPosition = leastSquareAlgorithm (results);
+            Point userPosition = leastSquareAlgorithm (algorithmInputDataList);
             return userPosition;
         }
     }
@@ -112,7 +112,15 @@ public class LSAlgorithm {
         return strongestResults;
     }
 
-    private List<ScanResult> translatesRSStoDistance  (List<ScanResult> results,
+    /**
+     * Translates RSS to distance by using estimated pathloss model and stores it onto a new List
+     * of APAlgorithmData.
+     * @param results WiFi scan results list with the X strongest RSS from X APs
+     * @param idBssidApSelected BSSID selected
+     * @return List of APAlgorithmData objects with the 4 AP data (BSSID - estimated distance -
+     * RSS)
+     */
+    private List<APAlgorithmData> translatesRSStoDistance  (List<ScanResult> results,
                                                        int idBssidApSelected){
 
         /* Gets pathloss model coefficients from Database */
@@ -120,15 +128,23 @@ public class LSAlgorithm {
                 (mapViewActivityContext);
         double[] coefficients = itdbh.getCoefficientsDB(idBssidApSelected);
 
-
         /* Converts RSS to distance by applying these coefficients */
+        String BSSID; double estimatedDistance; int RSS;
+        List<APAlgorithmData> algorithmInputDataList = new ArrayList<APAlgorithmData>();
+        for (int i = 0; i < results.size(); i++){
+            BSSID = results.get(i).BSSID;
+            RSS = results.get(i).level;
+            
+            /* Empirical pathloss model: d = a + b*RSS + c*RSS² + d*RSS³ */
+            estimatedDistance = coefficients[0] + coefficients[1]*RSS + coefficients[2]*Math.pow
+                    (RSS, 2) + coefficients[4]*Math.pow(RSS, 3);
 
-
-
-        return results;
+            algorithmInputDataList.add(new APAlgorithmData(BSSID, estimatedDistance, RSS));
+        }
+        return algorithmInputDataList;
     }
 
-    private Point leastSquareAlgorithm (List<ScanResult> results){
+    private Point leastSquareAlgorithm (List<APAlgorithmData> algorithmInputDataList){
         return new Point(0, 0);
     }
 }
