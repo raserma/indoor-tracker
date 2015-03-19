@@ -201,6 +201,17 @@ public class IndoorTrackerDatabaseHandler extends SQLiteOpenHelper {
         db.close();
         return new Point (x, y);
     }
+
+    public double[] getCoefficientsDB (int idBssidApSelected){
+        SQLiteDatabase db = this.getReadableDatabase();
+        double[] coeff = new double[4];
+
+
+        
+
+        return coeff;
+
+    }
     private String removeLastDigitBssid (String bssid){
         if (bssid.length() > 0) {
             bssid = bssid.substring(0, bssid.length()-1);

@@ -4,6 +4,8 @@ import android.content.Context;
 import android.graphics.Point;
 import android.net.wifi.ScanResult;
 
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,12 +24,11 @@ public class LSAlgorithm {
      * Main method which finds user position based on WiFi scan results.
      * @param results WiFi scan results list with all the known AP data
      * @return Point object with AP position
-     * Point(-10, results.size()) if acquired APs < required AP for LS
+     *         Point(-10, results.size()) if acquired APs < required AP for LS
      */
-    public Point getUserPosition(List<ScanResult> results){
+    public Point getUserPosition(List<ScanResult> results, int idBssidApSelected){
         IndoorTrackerDatabaseHandler apdbhandler =  new IndoorTrackerDatabaseHandler
                 (mapViewActivityContext);
-
 
         /* Filters known APs from database */
         results = apdbhandler.filterKnownAPDB (results);
@@ -36,43 +37,31 @@ public class LSAlgorithm {
         filtering out the rest */
         results = filterSSIDs (results);
 
-
         // If less than 4 AP were acquired
         if(results.size() < 4)
             return new Point (-10, results.size());
-        /* Gets AP with strongest RSS */
-        String bssidStrongest = getStrongestAP (results);
-        /* Gets AP position from database */
-        Point userPosition = apdbhandler.getAPPositionDB(bssidStrongest);
-        return userPosition;
-    }
 
-    /**
-     * Gets AP with strongest RSS from scan result lists
-     * @param results WiFi scan results list with all the known AP data
-     * @return strongest AP bssid
-     */
-    private String getStrongestAP (List<ScanResult> results){
-        String bssid = null;
-        int rss = 0, max = -120, index = 0;
-        // Get strongest RSS AP from WiFi results list
-        for(int i = 0; i < results.size(); i++){
-            rss = results.get(i).level;
-            // Comparison to find the maximum value
-            if(rss > max) {
-                max = rss;
-                index = i;
-            }
+        else {
+
+            /* Gets the X strongest RSS from X APs */
+            results = getStrongestRSS (results);
+
+            /* Translates RSS to distance by using estimated pathloss model and stores it onto
+            'distanceCm' field in ScanResult */
+            results = translatesRSStoDistance (results, idBssidApSelected);
+
+
+            /* Least Square algorithm */
+            Point userPosition = leastSquareAlgorithm (results);
+            return userPosition;
         }
-        return results.get(index).BSSID;
     }
 
     /**
      * Filters duplicate BSSIDs out caused by different TUT SSIDs.
      * NOTE: TUT WLAN network provides four BSSIDs (MACs) for each AP, one for each SSID: TUT,
-     * TUT-WPA,
-     * LANGATON-WPA and eduroam. Since these four BSSIDs represent the same position and same
-     * power level (this is not actually true), only one must prevail.
+     * TUT-WPA, LANGATON-WPA and eduroam. Since these four BSSIDs represent the same position and
+     * same power level (this is not actually true), only one must prevail.
      *
      * @param results WiFi scan results list with all the known AP data
      * @return WiFi scan results list with all the known AP data and without duplicate BSSIDs
@@ -87,5 +76,59 @@ public class LSAlgorithm {
         results.clear();
         results.addAll(map.values());
         return results;
+    }
+
+    /**
+     * Gets X strongest RSSs from X APs:
+     *      Sorts ScanResult list in descending order by "level" field
+     *      Gets the X first elements of the list by using subList
+     * @param results WiFi scan results list with all the known AP data
+     * @return WiFi scan results list with the X strongest APs
+     */
+    private List<ScanResult> getStrongestRSS (List<ScanResult> results){
+
+        /* Sorts the list by "level" field name */
+        Collections.sort(results, new Comparator<ScanResult>() {
+            public int compare(ScanResult one, ScanResult other) {
+                int returnVal = 0;
+
+                if(one.level < other.level){
+                    returnVal =  -1;
+                }else if(one.level > other.level){
+                    returnVal =  1;
+                }else if(one.level == other.level){
+                    returnVal =  0;
+                }
+                return returnVal;
+
+            }
+        });
+
+        /* Gets the X first elements of the list in a new list */
+        int numberAcquiredAP = 4; // X = 4
+        List<ScanResult> strongestResults = results.subList(0, numberAcquiredAP);
+
+        return strongestResults;
+    }
+
+    private List<ScanResult> translatesRSStoDistance  (List<ScanResult> results,
+                                                       int idBssidApSelected){
+
+        /* Gets pathloss model coefficients from Database */
+        IndoorTrackerDatabaseHandler itdbh = new IndoorTrackerDatabaseHandler
+                (mapViewActivityContext);
+        double[] coefficients = new double[4];
+        coefficients = itdbh.getCoefficientsDB(idBssidApSelected);
+
+
+        /* Converts RSS to distance by applying these coefficients */
+
+
+
+        return results;
+    }
+
+    private Point leastSquareAlgorithm (List<ScanResult> results){
+        return new Point(0, 0);
     }
 }

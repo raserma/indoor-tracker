@@ -4,6 +4,8 @@
     <string name="app_name">IndoorTracker</string>
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
+    <string name="action_database">Database</string>
+    <string name="action_pathloss_model">Choose AP path loss model</string>
     <string name="button_pl_estimator">Estimate Path Loss</string>
     <string name="button_ls_tracker">Least Square Tracker</string>
     <string name="button_ekf_tracker">Non Linear LS Tracker</string>

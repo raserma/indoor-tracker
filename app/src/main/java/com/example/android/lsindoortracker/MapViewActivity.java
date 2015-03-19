@@ -1,7 +1,9 @@
 package com.example.android.lsindoortracker;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Point;
@@ -10,8 +12,10 @@ import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.text.InputType;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
 import com.qozix.tileview.TileView;
@@ -68,7 +72,8 @@ public class MapViewActivity extends Activity {
     private boolean mIsScanned = false;
     private boolean mIsAlgorithmFinished = true;
     private int mNumberProcessingThreads = 0;
-    private LSAlgorithm cellIDalgorithm;
+    private LSAlgorithm mLSAlgorithm;
+    private int mIdBssidApSelected;
     public static final int UPDATE_MAP = 1;
     public static final int SCAN_INTERVAL = 3000; // 3 seconds
     public static final int SCAN_DELAY = 1000; // 1 second
@@ -140,8 +145,9 @@ public class MapViewActivity extends Activity {
      * user or Android system pauses or destroys the application.
      */
     private void setScanningTask(){
+        mIdBssidApSelected = 4; // By default, AP4 is chosen to provide pathloss model
         mWifi = (WifiManager) getSystemService(getApplicationContext().WIFI_SERVICE);
-        cellIDalgorithm = new LSAlgorithm(this);
+        mLSAlgorithm = new LSAlgorithm(this);
         mTimer = new Timer();
         mTimer.schedule(new TimerTask() {
             @Override
@@ -188,7 +194,7 @@ public class MapViewActivity extends Activity {
                     int Low = 0;
                     int High = 150;
                     int R = r.nextInt(High-Low) + Low;*/
-                    mUserPosition = cellIDalgorithm.getUserPosition(results);
+                    mUserPosition = mLSAlgorithm.getUserPosition(results, mIdBssidApSelected);
                     /* Call the UPDATE_MAP case method of UI Handler with user position on it */
                     Message msg = mUIHandler.obtainMessage(UPDATE_MAP, mUserPosition);
                     mUIHandler.sendMessage(msg);
@@ -252,13 +258,43 @@ public class MapViewActivity extends Activity {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         switch (item.getItemId()) {
-            case R.id.action_settings:
+            case R.id.action_database:
                 // Settings option clicked.
                 Intent dbmanager = new Intent(this,AndroidDatabaseManager.class);
                 startActivity(dbmanager);
                 return true;
+            case R.id.action_pathloss_model:
+                dialogBssid();
+                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
+    }
+
+    /** Asks for chosen AP which will provide pathloss model */
+    private void dialogBssid() {
+        // Set up the input
+        final EditText input = new EditText(this);
+        // Specify the type of input expected; this, for example, sets the input as a number
+        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.dialog_bssid)
+                .setView(input)
+                        // Set up the buttons
+                .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        mIdBssidApSelected = Integer.parseInt(input.getText().toString());
+                    }
+                })
+                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                        // code = 0 -> error
+                        mIdBssidApSelected = 0;
+                    }
+                })
+                .show();
     }
 }
