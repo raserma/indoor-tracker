@@ -12,6 +12,7 @@
     <string name="button_measurements">Measurements</string>
     <string name="button_estimation">Estimation</string>
     <string name="button_make_estimation">Make Estimation</string>
+    <string name="button_input_coeff">Introduce coefficients manually</string>
     <string name="title_activity_measurements">Measurements</string>
     <string name="text_dbms">dBms</string>
     <string name="text_iterations">iterations</string>
@@ -20,6 +21,7 @@
     <string name="button_next">Next</string>
     <string name="button_stop">Stop</string>
     <string name="dialog_bssid">Selected AP MAC identification</string>
+    <string name="dialog_coefficients">Introduce coefficients</string>
     <string name="title_activity_measuring_data">MeasuringDataActivity</string>
     <string name="title_activity_path_loss_estimation">PathLossEstimationActivity</string>
     <string name="title_activity_applying_regression">ApplyingRegressionActivity</string>

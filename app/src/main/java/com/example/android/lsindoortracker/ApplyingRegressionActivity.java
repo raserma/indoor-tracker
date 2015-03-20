@@ -17,6 +17,9 @@ public class ApplyingRegressionActivity extends Activity {
     private int mIdBssidApSelected;
     private double [] mRssValuesDB;
     private double [] mDistanceValuesDB;
+
+    private double [] mInputCoefficients;
+    private EditText m_aCoeff, m_bCoeff, m_cCoeff, m_dCoeff;
     IndoorTrackerDatabaseHandler measdbh;
     public int getmIdBssidApSelected() {
         return mIdBssidApSelected;
@@ -56,6 +59,26 @@ public class ApplyingRegressionActivity extends Activity {
     private void initiateAndroid() {
         // Creation of MAC/BSSID database
         measdbh = new IndoorTrackerDatabaseHandler(this);
+
+        mInputCoefficients = new double[4];
+
+        // Creation of Edit Texts
+        m_aCoeff   = (EditText)findViewById(R.id.text_edit_aCoeff);
+        m_aCoeff.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL |
+                InputType.TYPE_NUMBER_FLAG_SIGNED);
+
+        m_bCoeff   = (EditText)findViewById(R.id.text_edit_bCoeff);
+        m_bCoeff.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL |
+                InputType.TYPE_NUMBER_FLAG_SIGNED);
+
+        m_cCoeff   = (EditText)findViewById(R.id.text_edit_cCoeff);
+        m_cCoeff.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL |
+                InputType.TYPE_NUMBER_FLAG_SIGNED);
+
+        m_dCoeff   = (EditText)findViewById(R.id.text_edit_dCoeff);
+        m_dCoeff.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL |
+                InputType.TYPE_NUMBER_FLAG_SIGNED);
+
         // Dialog for introducing desired AP MAC address
         dialogBssid();
     }
@@ -91,7 +114,7 @@ public class ApplyingRegressionActivity extends Activity {
         // We get set of data from database
         mRssValuesDB = measdbh.getRSSValuesDB (getmIdBssidApSelected());
         mDistanceValuesDB = measdbh.getDistanceValuesDB(getmIdBssidApSelected());
-        /** Curve fitting using 4th order polynomial regression **/
+        /* Curve fitting using 4th order polynomial regression */
         // Creation of input data: y[] and X[][] - NOTE: I should consider using an external matrix
         // library
         int k = 4; // Polynomial degree is k - 1 = 3th degree
@@ -126,6 +149,16 @@ public class ApplyingRegressionActivity extends Activity {
         // Show them in the screen
         // Store them on database
         measdbh.addCoefficientsDB(mIdBssidApSelected, coefficients);
+    }
+
+    public void inputCoeffManually (View view){
+        mInputCoefficients[0] = Double.parseDouble(m_aCoeff.getText().toString());
+        mInputCoefficients[1] = Double.parseDouble(m_bCoeff.getText().toString());
+        mInputCoefficients[2] = Double.parseDouble(m_cCoeff.getText().toString());
+        mInputCoefficients[3] = Double.parseDouble(m_dCoeff.getText().toString());
+
+        /* Stores input coefficients in database */
+        measdbh.addCoefficientsDB(mIdBssidApSelected, mInputCoefficients);
     }
 
 
