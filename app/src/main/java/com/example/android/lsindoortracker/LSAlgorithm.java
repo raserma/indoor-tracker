@@ -93,9 +93,9 @@ public class LSAlgorithm {
             public int compare(ScanResult one, ScanResult other) {
                 int returnVal = 0;
 
-                if(one.level < other.level){
+                if(one.level > other.level){
                     returnVal =  -1;
-                }else if(one.level > other.level){
+                }else if(one.level < other.level){
                     returnVal =  1;
                 }else if(one.level == other.level){
                     returnVal =  0;
@@ -134,10 +134,10 @@ public class LSAlgorithm {
         for (int i = 0; i < results.size(); i++){
             BSSID = results.get(i).BSSID;
             RSS = results.get(i).level;
-            
+
             /* Empirical pathloss model: d = a + b*RSS + c*RSS² + d*RSS³ */
             estimatedDistance = coefficients[0] + coefficients[1]*RSS + coefficients[2]*Math.pow
-                    (RSS, 2) + coefficients[4]*Math.pow(RSS, 3);
+                    (RSS, 2) + coefficients[3]*Math.pow(RSS, 3);
 
             algorithmInputDataList.add(new APAlgorithmData(BSSID, estimatedDistance, RSS));
         }
