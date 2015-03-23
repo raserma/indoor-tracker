@@ -129,17 +129,19 @@ public class LSAlgorithm {
         double[] coefficients = itdbh.getCoefficientsDB(idBssidApSelected);
 
         /* Converts RSS to distance by applying these coefficients */
-        String BSSID; double estimatedDistance; int RSS;
+        String BSSID; double estimatedDistance; int RSS; Point coordinatesAP;
         List<APAlgorithmData> algorithmInputDataList = new ArrayList<APAlgorithmData>();
         for (int i = 0; i < results.size(); i++){
             BSSID = results.get(i).BSSID;
+            coordinatesAP = itdbh.getAPPositionDB(BSSID);
             RSS = results.get(i).level;
 
             /* Empirical pathloss model: d = a + b*RSS + c*RSS² + d*RSS³ */
             estimatedDistance = coefficients[0] + coefficients[1]*RSS + coefficients[2]*Math.pow
                     (RSS, 2) + coefficients[3]*Math.pow(RSS, 3);
 
-            algorithmInputDataList.add(new APAlgorithmData(BSSID, estimatedDistance, RSS));
+            algorithmInputDataList.add(new APAlgorithmData(BSSID, estimatedDistance, RSS,
+                    coordinatesAP));
         }
         return algorithmInputDataList;
     }

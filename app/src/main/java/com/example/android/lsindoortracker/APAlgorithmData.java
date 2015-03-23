@@ -1,5 +1,7 @@
 package com.example.android.lsindoortracker;
 
+import android.graphics.Point;
+
 /**
  * Created by raul on 19.3.2015.
  */
@@ -7,6 +9,7 @@ public class APAlgorithmData {
     public String bssid;
     public double distance;
     public int RSS;
+    public Point coordinatesAP;
 
     public String getBssid() {
         return bssid;
@@ -32,10 +35,11 @@ public class APAlgorithmData {
         this.RSS = RSS;
     }
 
-    public APAlgorithmData(String bssid, double distance, int RSS){
+    public APAlgorithmData(String bssid, double distance, int RSS, Point coordinatesAP){
         this.bssid = bssid;
         this.distance = distance;
         this.RSS = RSS;
+        this.coordinatesAP = coordinatesAP;
     }
 
 }

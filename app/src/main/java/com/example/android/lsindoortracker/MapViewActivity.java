@@ -145,7 +145,7 @@ public class MapViewActivity extends Activity {
      * user or Android system pauses or destroys the application.
      */
     private void setScanningTask(){
-        mIdBssidApSelected = 4; // By default, AP4 is chosen to provide pathloss model
+        mIdBssidApSelected = 3; // By default, AP2 is chosen to provide pathloss model
         mWifi = (WifiManager) getSystemService(getApplicationContext().WIFI_SERVICE);
         mLSAlgorithm = new LSAlgorithm(this);
         mTimer = new Timer();
