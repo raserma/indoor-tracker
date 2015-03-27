@@ -23,4 +23,10 @@ dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     compile files('/home/raul/Dropbox/AndroidStudioProjects/LSIndoorTracker/libs/commons-math3-3.4.1.jar')
     compile files('/home/raul/Dropbox/AndroidStudioProjects/LSIndoorTracker/libs/tileviewlib-1.0.13.jar')
+    compile files('/home/raul/Dropbox/AndroidStudioProjects/LSIndoorTracker/libs/ejml-v0.26-libs/EJML-core-0.26.jar')
+    compile files('/home/raul/Dropbox/AndroidStudioProjects/LSIndoorTracker/libs/ejml-v0.26-libs/EJML-core-0.26-sources.jar')
+    compile files('/home/raul/Dropbox/AndroidStudioProjects/LSIndoorTracker/libs/ejml-v0.26-libs/EJML-equation-0.26.jar')
+    compile files('/home/raul/Dropbox/AndroidStudioProjects/LSIndoorTracker/libs/ejml-v0.26-libs/EJML-equation-0.26-sources.jar')
+    compile files('/home/raul/Dropbox/AndroidStudioProjects/LSIndoorTracker/libs/ejml-v0.26-libs/EJML-experimental-0.26.jar')
+    compile files('/home/raul/Dropbox/AndroidStudioProjects/LSIndoorTracker/libs/ejml-v0.26-libs/EJML-experimental-0.26-sources.jar')
 }

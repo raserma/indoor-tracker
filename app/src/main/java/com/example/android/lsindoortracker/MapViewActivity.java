@@ -94,10 +94,21 @@ public class MapViewActivity extends Activity {
                         Toast.makeText(getBaseContext(), "Only "+ point.y +" APs acquired",
                                 Toast.LENGTH_SHORT)
                                 .show();
-                    }else{
+                    }else if(point.x < 0 || point.y < 0) { //Out of boundaries
+                        // Toast
+                        Toast.makeText(getBaseContext(), "Coordinates negative",
+                                Toast.LENGTH_SHORT)
+                                .show();
+                    }else if(point.x > 80 || point.y > 150){ //Out of boundaries
+                        // Toast
+                        Toast.makeText(getBaseContext(), "Coordinates out of boundaries",
+                                Toast.LENGTH_SHORT)
+                                .show();
+                    }
+                    else{
                         //mTileView.moveToAndCenter(point.x, point.y);
                         mTileView.addMarker(mMarker, point.x, point.y, -0.5f, -1.0f);
-                        Toast.makeText(getBaseContext(), "new scan", Toast.LENGTH_SHORT)
+                            Toast.makeText(getBaseContext(), "Correct scan", Toast.LENGTH_SHORT)
                                 .show();
                     }
                     break;
@@ -194,7 +205,7 @@ public class MapViewActivity extends Activity {
                     int Low = 0;
                     int High = 150;
                     int R = r.nextInt(High-Low) + Low;*/
-                    mUserPosition = mLSAlgorithm.getUserPosition(results, mIdBssidApSelected);
+                     mUserPosition = mLSAlgorithm.getUserPosition(results, mIdBssidApSelected);
                     /* Call the UPDATE_MAP case method of UI Handler with user position on it */
                     Message msg = mUIHandler.obtainMessage(UPDATE_MAP, mUserPosition);
                     mUIHandler.sendMessage(msg);

@@ -4,6 +4,11 @@ import android.content.Context;
 import android.graphics.Point;
 import android.net.wifi.ScanResult;
 
+import org.ejml.data.DenseMatrix64F;
+import org.ejml.factory.LinearSolverFactory;
+import org.ejml.interfaces.linsol.LinearSolver;
+import org.ejml.ops.CommonOps;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -146,7 +151,113 @@ public class LSAlgorithm {
         return algorithmInputDataList;
     }
 
-    private Point leastSquareAlgorithm (List<APAlgorithmData> algorithmInputDataList){
-        return new Point(0, 0);
+    private Point leastSquareAlgorithm (List<APAlgorithmData> algInputList){
+        /* A Java matrix library will be used to handle matrix operations in an efficient way.
+         * EJML has been chosen because its good performance showed at Java Matrix Benchmark
+         * (https://code.google.com/p/java-matrix-benchmark/)
+         */
+
+        /** I will calculate user position by using different algorithms and comparing position
+         * results, time and performance:
+         *      + Hiperbolic algorithms:
+         *          - Coop. pos. techniques for mobile localization in 4g (Francescantonio, Xi Lu),
+         *          which suppose j=1 is origin node with x_1 = y_1 =0
+         *          - Radio Tracking of Open Range Sheep which suppose j=1 a random BS with x_1 and
+         *          y_1 non zero
+         *      + Circular algorithms:
+         *          - Radio Tracking of ORS
+         */
+
+        /**
+         * HIPERBOLIC ALGORITHM:
+         *      Radio Tracking of ORS with random BS as fixed BS.
+         *
+         *      A = - [(x2-x1) (y2-y1) r2,1;
+         *             (x3-x1) (y3-y1) r3,1;
+         *             (x4-x1) (y4-y1) r4,1]
+         *
+         *      x = [x;
+         *           y;
+         *           r1]
+         *
+         *      b = 1/2* [r2,1^2-K2-K1;
+         *                r3,1^2-K3-K1;
+         *                r4.1^2-K4-K1]
+         */
+
+        /* Gather all the collected data: AP coordinates and distances */
+        Point coordAP1 = algInputList.get(0).coordinatesAP;
+        Point coordAP2 = algInputList.get(1).coordinatesAP;
+        Point coordAP3 = algInputList.get(2).coordinatesAP;
+        Point coordAP4 = algInputList.get(3).coordinatesAP;
+
+        double distAP1 = algInputList.get(0).distance;
+        double distAP2 = algInputList.get(1).distance;
+        double distAP3 = algInputList.get(2).distance;
+        double distAP4 = algInputList.get(3).distance;
+
+        // ri_j = ri - rj
+        double r2_1 = distAP2 - distAP1;
+        double r3_1 = distAP3 - distAP1;
+        double r4_1 = distAP4 - distAP1;
+
+        // Ki = xi^2 + yi^2
+        double K1 = Math.pow(coordAP1.x, 2) + Math.pow(coordAP1.y, 2);
+        double K2 = Math.pow(coordAP2.x, 2) + Math.pow(coordAP2.y, 2);
+        double K3 = Math.pow(coordAP3.x, 2) + Math.pow(coordAP3.y, 2);
+        double K4 = Math.pow(coordAP4.x, 2) + Math.pow(coordAP4.y, 2);
+
+
+
+        /* Generation of Matrix A and vector b */
+
+        double [][]matrixA = new double[][]{
+                {coordAP2.x - coordAP1.x, coordAP2.y - coordAP1.y, r2_1},
+                {coordAP3.x - coordAP1.x, coordAP3.y - coordAP1.y, r3_1},
+                {coordAP4.x - coordAP1.x, coordAP4.y - coordAP1.y, r4_1}};
+        DenseMatrix64F A = new DenseMatrix64F(matrixA);
+        CommonOps.changeSign(A); // A is negative
+
+        double []vectorB = new double[]{
+                Math.pow(r2_1, 2) - K2 + K1,
+                Math.pow(r3_1, 2) - K3 + K1,
+                Math.pow(r4_1, 2) - K4 + K1
+
+        };
+        DenseMatrix64F b = new DenseMatrix64F(3,1, false, vectorB);
+        CommonOps.scale(0.5,b); //1/2*b
+
+        DenseMatrix64F x = new DenseMatrix64F(3,1);
+
+        /**
+         * CIRCULAR ALGORITHM:
+         *      Radio Tracking of ORS with random BS as fixed BS.
+         *
+         *      A = - [(x2-x1) (y2-y1);
+         *             (x3-x1) (y3-y1);
+         *             (x4-x1) (y4-y1)]
+         *
+         *      x = [x;
+         *           y]
+         *
+         *      b = 1/2* [r2,1^2-K2-K1;
+         *                r3,1^2-K3-K1;
+         *                r4.1^2-K4-K1]
+         */
+        
+
+        /* Linear Solver Least Square */
+        LinearSolver<DenseMatrix64F> solver = LinearSolverFactory.leastSquares(3, 3);
+
+        if( !solver.setA(A) ) {
+            throw new IllegalArgumentException("Singular matrix");
+        }
+
+        if( solver.quality() <= 1e-8 )
+            throw new IllegalArgumentException("Nearly singular matrix");
+
+        solver.solve(b,x);
+
+        return new Point((int)x.get(0), (int)x.get(1));
     }
 }
