@@ -185,7 +185,7 @@ public class LSAlgorithm {
          *                r4.1^2-K4-K1]
          */
 
-        /* Gather all the collected data: AP coordinates and distances */
+        /* Gather all the collected data: AP coordinates and distances *//*
         Point coordAP1 = algInputList.get(0).coordinatesAP;
         Point coordAP2 = algInputList.get(1).coordinatesAP;
         Point coordAP3 = algInputList.get(2).coordinatesAP;
@@ -211,7 +211,8 @@ public class LSAlgorithm {
 
         /* Generation of Matrix A and vector b */
 
-        double [][]matrixA = new double[][]{
+       /* double [][]matrixA = new double[][]{
+
                 {coordAP2.x - coordAP1.x, coordAP2.y - coordAP1.y, r2_1},
                 {coordAP3.x - coordAP1.x, coordAP3.y - coordAP1.y, r3_1},
                 {coordAP4.x - coordAP1.x, coordAP4.y - coordAP1.y, r4_1}};
@@ -227,24 +228,68 @@ public class LSAlgorithm {
         DenseMatrix64F b = new DenseMatrix64F(3,1, false, vectorB);
         CommonOps.scale(0.5,b); //1/2*b
 
-        DenseMatrix64F x = new DenseMatrix64F(3,1);
+        DenseMatrix64F x = new DenseMatrix64F(3,1);*/
+
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
 
         /**
          * CIRCULAR ALGORITHM:
          *      Radio Tracking of ORS with random BS as fixed BS.
          *
-         *      A = - [(x2-x1) (y2-y1);
+         *      A =   [(x2-x1) (y2-y1);
          *             (x3-x1) (y3-y1);
          *             (x4-x1) (y4-y1)]
          *
          *      x = [x;
          *           y]
          *
-         *      b = 1/2* [r2,1^2-K2-K1;
-         *                r3,1^2-K3-K1;
-         *                r4.1^2-K4-K1]
+         *      b = 1/2* [b21;
+         *                b32;
+         *                b41]
          */
-        
+
+        /* Gather all the collected data: AP coordinates and distances */
+
+        Point coordAP1 = algInputList.get(0).coordinatesAP;
+        Point coordAP2 = algInputList.get(1).coordinatesAP;
+        Point coordAP3 = algInputList.get(2).coordinatesAP;
+        Point coordAP4 = algInputList.get(3).coordinatesAP;
+
+        double distAP1 = algInputList.get(0).distance;
+        double distAP2 = algInputList.get(1).distance;
+        double distAP3 = algInputList.get(2).distance;
+        double distAP4 = algInputList.get(3).distance;
+
+        double d2_1 = Math.pow((coordAP2.x - coordAP1.x), 2) +  Math.pow((coordAP2.y - coordAP1
+                .y), 2);
+        double d3_1 = Math.pow((coordAP3.x - coordAP1.x), 2) +  Math.pow((coordAP3.y - coordAP1
+                .y), 2);
+        double d4_1 = Math.pow((coordAP4.x - coordAP1.x), 2) +  Math.pow((coordAP4.y - coordAP1
+                .y), 2);
+
+        double b2_1 = (Math.pow(distAP1,2) - Math.pow(distAP2,2) + d2_1);
+        double b3_1 = (Math.pow(distAP1,2) - Math.pow(distAP3,2) + d3_1);
+        double b4_1 = (Math.pow(distAP1,2) - Math.pow(distAP4,2) + d4_1);
+
+
+        /* Generation of Matrix A and vector b */
+
+        double [][]matrixA = new double[][]{
+
+                {coordAP2.x - coordAP1.x, coordAP2.y - coordAP1.y},
+                {coordAP3.x - coordAP1.x, coordAP3.y - coordAP1.y},
+                {coordAP4.x - coordAP1.x, coordAP4.y - coordAP1.y}};
+        DenseMatrix64F A = new DenseMatrix64F(matrixA);
+
+        double []vectorB = new double[]{
+                b2_1, b3_1, b4_1
+        };
+        DenseMatrix64F b = new DenseMatrix64F(3,1, false, vectorB);
+        CommonOps.scale(0.5,b); //1/2*b
+
+        DenseMatrix64F x = new DenseMatrix64F(2,1);
+
 
         /* Linear Solver Least Square */
         LinearSolver<DenseMatrix64F> solver = LinearSolverFactory.leastSquares(3, 3);
@@ -257,7 +302,8 @@ public class LSAlgorithm {
             throw new IllegalArgumentException("Nearly singular matrix");
 
         solver.solve(b,x);
-
-        return new Point((int)x.get(0), (int)x.get(1));
+        double xUserPos = x.get(0) + coordAP1.x;
+        double yUserPos = x.get(1) + coordAP1.y;
+        return new Point((int)xUserPos, (int)yUserPos);
     }
 }
