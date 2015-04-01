@@ -58,6 +58,7 @@ public class LSAlgorithm {
                     = translatesRSStoDistance (results, idBssidApSelected);
 
             Point userPosition = new Point(0, 0);
+            /* Depending on user selection, positioning will be calculated by different approaches*/
             switch(posAlgSelected) {
                 case 1: // Hyperbolic algorithm
                     userPosition = hyperbolicAlgorithm (algorithmInputDataList);
@@ -164,23 +165,24 @@ public class LSAlgorithm {
         return algorithmInputDataList;
     }
 
-    private Point leastSquareAlgorithm (List<APAlgorithmData> algInputList){
-        /* A Java matrix library will be used to handle matrix operations in an efficient way.
-         * EJML has been chosen because its good performance showed at Java Matrix Benchmark
-         * (https://code.google.com/p/java-matrix-benchmark/)
-         */
 
-        /** I will calculate user position by using different algorithms and comparing position
-         * results, time and performance:
-         *      + Hiperbolic algorithms:
-         *          - Coop. pos. techniques for mobile localization in 4g (Francescantonio, Xi Lu),
-         *          which suppose j=1 is origin node with x_1 = y_1 =0
-         *          - Radio Tracking of Open Range Sheep which suppose j=1 a random BS with x_1 and
-         *          y_1 non zero
-         *      + Circular algorithms:
-         *          - Radio Tracking of ORS
-         */
+    /* A Java matrix library will be used to handle matrix operations in an efficient way.
+     * EJML has been chosen because its good performance showed at Java Matrix Benchmark
+     * (https://code.google.com/p/java-matrix-benchmark/)
+     */
 
+    /** I will calculate user position by using different algorithms and comparing position
+     * results, time and performance:
+     *      + Hiperbolic algorithms:
+     *          - Coop. pos. techniques for mobile localization in 4g (Francescantonio, Xi Lu),
+     *          which suppose j=1 is origin node with x_1 = y_1 =0
+     *          - Radio Tracking of Open Range Sheep which suppose j=1 a random BS with x_1 and
+     *          y_1 non zero
+     *      + Circular algorithms:
+     *          - Radio Tracking of ORS
+     */
+
+    private Point hyperbolicAlgorithm(List<APAlgorithmData> algInputList) {
         /**
          * HIPERBOLIC ALGORITHM:
          *      Radio Tracking of ORS with random BS as fixed BS.
@@ -198,7 +200,7 @@ public class LSAlgorithm {
          *                r4.1^2-K4-K1]
          */
 
-        /* Gather all the collected data: AP coordinates and distances *//*
+        /* Gather all the collected data: AP coordinates and distances */
         Point coordAP1 = algInputList.get(0).coordinatesAP;
         Point coordAP2 = algInputList.get(1).coordinatesAP;
         Point coordAP3 = algInputList.get(2).coordinatesAP;
@@ -224,7 +226,7 @@ public class LSAlgorithm {
 
         /* Generation of Matrix A and vector b */
 
-       /* double [][]matrixA = new double[][]{
+        double [][]matrixA = new double[][]{
 
                 {coordAP2.x - coordAP1.x, coordAP2.y - coordAP1.y, r2_1},
                 {coordAP3.x - coordAP1.x, coordAP3.y - coordAP1.y, r3_1},
@@ -241,11 +243,27 @@ public class LSAlgorithm {
         DenseMatrix64F b = new DenseMatrix64F(3,1, false, vectorB);
         CommonOps.scale(0.5,b); //1/2*b
 
-        DenseMatrix64F x = new DenseMatrix64F(3,1);*/
+        DenseMatrix64F x = new DenseMatrix64F(3,1);
 
+        /* Linear Solver Least Square */
+        LinearSolver<DenseMatrix64F> solver = LinearSolverFactory.leastSquares(3, 3);
 
-        ////////////////////////////////////////////////////////////////////////////////////////////
+        if( !solver.setA(A) ) {
+            throw new IllegalArgumentException("Singular matrix");
+        }
 
+        if( solver.quality() <= 1e-8 )
+            throw new IllegalArgumentException("Nearly singular matrix");
+
+        solver.solve(b,x);
+
+        return new Point( (int) x.get(0), (int) x.get(1));
+    }
+    private Point weightedHyperbolicAlgorithm(List<APAlgorithmData> algInputList) {
+        return null;
+    }
+
+    private Point circularAlgorithm(List<APAlgorithmData> algInputList) {
         /**
          * CIRCULAR ALGORITHM:
          *      Radio Tracking of ORS with random BS as fixed BS.
@@ -286,7 +304,7 @@ public class LSAlgorithm {
         double b4_1 = (Math.pow(distAP1,2) - Math.pow(distAP4,2) + d4_1);
 
 
-        /* Generation of Matrix A, Matrix W and vector b */
+        /* Generation of Matrix A and vector b */
 
         double [][]matrixA = new double[][]{
 
@@ -305,23 +323,24 @@ public class LSAlgorithm {
 
 
         /* Linear Solver Least Square */
-        LinearSolver<DenseMatrix64F> solverL = LinearSolverFactory.leastSquares(3, 3);
+        LinearSolver<DenseMatrix64F> solver = LinearSolverFactory.leastSquares(3, 3);
 
-        if( !solverL.setA(A) ) {
+        if( !solver.setA(A) ) {
             throw new IllegalArgumentException("Singular matrix");
         }
 
-        if( solverL.quality() <= 1e-8 )
+        if( solver.quality() <= 1e-8 )
             throw new IllegalArgumentException("Nearly singular matrix");
 
-        solverL.solve(b,x);
+        solver.solve(b,x);
+
         double xUserPos = x.get(0) + coordAP1.x;
         double yUserPos = x.get(1) + coordAP1.y;
 
-        weightedLeastSquareAlgorithm(algInputList);
         return new Point((int)xUserPos, (int)yUserPos);
     }
-    private Point weightedLeastSquareAlgorithm (List<APAlgorithmData> algInputList){
+
+    private Point weightedCircularAlgorithm(List<APAlgorithmData> algInputList) {
         /* Gather all the collected data: AP coordinates and distances */
 
         Point coordAP1 = algInputList.get(0).coordinatesAP;
@@ -346,7 +365,7 @@ public class LSAlgorithm {
         double b4_1 = (Math.pow(distAP1,2) - Math.pow(distAP4,2) + d4_1);
 
 
-        /* Generation of Matrix A, Matrix W and vector b */
+        /* Generation of Matrix A, Matrix S of Variances and vector b */
 
         double [][]matrixA = new double[][]{
 
@@ -378,7 +397,7 @@ public class LSAlgorithm {
         DenseMatrix64F x = new DenseMatrix64F(2,1);
 
 
-        /* Linear Solver Least Square */
+        /* Weighted Solver Least Square */
 
         // A' = S^-1*A
         DenseMatrix64F APrime = new DenseMatrix64F(3,2);
@@ -391,32 +410,20 @@ public class LSAlgorithm {
 
         // WEIGHTED LEAST SQUARE
 
-        LinearSolver<DenseMatrix64F> solverW = LinearSolverFactory.leastSquares(3, 3);
+        LinearSolver<DenseMatrix64F> solver = LinearSolverFactory.leastSquares(3, 3);
 
-        if( !solverW.setA(APrime) ) {
+        if( !solver.setA(APrime) ) {
             throw new IllegalArgumentException("Singular matrix");
         }
 
-        if( solverW.quality() <= 1e-8 )
+        if( solver.quality() <= 1e-8 )
             throw new IllegalArgumentException("Nearly singular matrix");
 
-        solverW.solve(bPrime,x);
+        solver.solve(bPrime,x);
+
         double xUserPosW = x.get(0) + coordAP1.x;
         double yUserPosW = x.get(1) + coordAP1.y;
+
         return new Point((int)xUserPosW, (int)yUserPosW);
-    }
-
-
-    private Point hyperbolicAlgorithm(List<APAlgorithmData> algorithmInputDataList) {
-        return null;
-    }
-    private Point weightedHyperbolicAlgorithm(List<APAlgorithmData> algorithmInputDataList) {
-        return null;
-    }
-    private Point circularAlgorithm(List<APAlgorithmData> algorithmInputDataList) {
-        return null;
-    }
-    private Point weightedCircularAlgorithm(List<APAlgorithmData> algorithmInputDataList) {
-        return null;
     }
 }
