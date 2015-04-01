@@ -16,7 +16,12 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * Created by raul on 17.3.2015.
+ * Database Handler for app. There are three main tables:
+ *      + BSSIDs table
+ *      + MEASUREMENTS table
+ *      + COEFFICIENTS table
+ *
+ * Database can be viewed in real time in the own app by using AndroidDatabaseManager class
  */
 public class IndoorTrackerDatabaseHandler extends SQLiteOpenHelper {
 
@@ -323,6 +328,11 @@ public class IndoorTrackerDatabaseHandler extends SQLiteOpenHelper {
         return distanceArray;
     }
 
+    /**
+     * Adds coefficients to database. They are stored in [a b c d] order
+     * @param id_BSSID Identification number of currently used AP MAC/BSSID
+     * @param coefficients coefficients [a b c d]
+     */
     public void addCoefficientsDB(int id_BSSID, double[] coefficients) {
         // NEEDS TO BE DONE:
         //      If id_BSSID is already in table, update coefficients

@@ -17,7 +17,20 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Created by raul on 17.3.2015.
+ *  Algorithm class which will estimate user position in several steps:
+ *      1) Filters APs which are not in database out
+ *      2) Filters repetitive SSIDs out
+ *      3) If resulted list is less than 4 APs, algorithm won't be able to estimate user position
+ *      4) Gets the 4 strongest RSSs from 4 different APs
+ *      5) Translates previous strongest RSSs to distances by using estimated PL model
+ *      6) Applies different least square approaches depending on user choice.
+ *
+ *  For a more detailed explanation on how these algorithms have been derived and deployed,
+ *  please refer to Msc Thesis.
+ *
+ *  NOTE: A Java matrix library will be used to handle matrix operations in an efficient way.
+ *  EJML has been chosen because its good performance showed at Java Matrix Benchmark
+ *  (https://code.google.com/p/java-matrix-benchmark/)
  */
 public class LSAlgorithm {
     public Context mapViewActivityContext;
@@ -57,19 +70,19 @@ public class LSAlgorithm {
             List<APAlgorithmData> algorithmInputDataList
                     = translatesRSStoDistance (results, idBssidApSelected);
 
-            Point userPosition = new Point(0, 0);
             /* Depending on user selection, positioning will be calculated by different approaches*/
+            Point userPosition = new Point(0, 0);
             switch(posAlgSelected) {
-                case 1: // Hyperbolic algorithm
+                case 0: // Hyperbolic algorithm
                     userPosition = hyperbolicAlgorithm (algorithmInputDataList);
                     break;
-                case 2: // Weighted Hyperbolic algorithm
+                case 1: // Weighted Hyperbolic algorithm
                     userPosition = weightedHyperbolicAlgorithm(algorithmInputDataList);
                     break;
-                case 3: // Circular algorithm
+                case 2: // Circular algorithm
                     userPosition = circularAlgorithm(algorithmInputDataList);
                     break;
-                case 4: // Weighted Circular algorithm
+                case 3: // Weighted Circular algorithm
                     userPosition = weightedCircularAlgorithm(algorithmInputDataList);
                     break;
             }
@@ -166,40 +179,43 @@ public class LSAlgorithm {
     }
 
 
-    /* A Java matrix library will be used to handle matrix operations in an efficient way.
-     * EJML has been chosen because its good performance showed at Java Matrix Benchmark
-     * (https://code.google.com/p/java-matrix-benchmark/)
+
+    /** User position can be acquired by using different approaches:
+     *      + Hyperbolic algorithm:
+     *          - "Radio Tracking of Open Range Sheep" with BS1 as fixed BS
+     *      + Weighted Hyperbolic algorithm:
+     *          - "Weighted Least Square Techniques for Improved RSS based location" with BS1 as
+     *          fixed BS
+     *      + Circular algorithm:
+     *          - "Radio Tracking of ORS" with BS1 as fixed BS
+     *      + Weighted Circular algorithm:
+     *          - "Weighted Least Square Techniques for Improved RSS based location" with BS1 as
+     *          fixed BS
      */
 
-    /** I will calculate user position by using different algorithms and comparing position
-     * results, time and performance:
-     *      + Hiperbolic algorithms:
-     *          - Coop. pos. techniques for mobile localization in 4g (Francescantonio, Xi Lu),
-     *          which suppose j=1 is origin node with x_1 = y_1 =0
-     *          - Radio Tracking of Open Range Sheep which suppose j=1 a random BS with x_1 and
-     *          y_1 non zero
-     *      + Circular algorithms:
-     *          - Radio Tracking of ORS
+    /**
+     * Estimates user position by applying an hyperbolic algorithm based on linearisation and Least
+     * Square approach:
+     *
+     *      From "Radio Tracking of ORS" with random BS as fixed BS.
+     *
+     *      A = - [(x2-x1) (y2-y1) r2,1;
+     *             (x3-x1) (y3-y1) r3,1;
+     *             (x4-x1) (y4-y1) r4,1]
+     *
+     *      b = 1/2* [r2,1^2-K2-K1;
+     *                r3,1^2-K3-K1;
+     *                r4.1^2-K4-K1]
+     *
+     *      x = (A'A)^-1*A'*b
+     *
+     *      x = [x; y; r1]
+     *
+     * @param algInputList List of APAlgorithmData objects with the 4 AP data (BSSID - estimated
+     *                     distance - RSS)
+     * @return User position estimated
      */
-
     private Point hyperbolicAlgorithm(List<APAlgorithmData> algInputList) {
-        /**
-         * HIPERBOLIC ALGORITHM:
-         *      Radio Tracking of ORS with random BS as fixed BS.
-         *
-         *      A = - [(x2-x1) (y2-y1) r2,1;
-         *             (x3-x1) (y3-y1) r3,1;
-         *             (x4-x1) (y4-y1) r4,1]
-         *
-         *      x = [x;
-         *           y;
-         *           r1]
-         *
-         *      b = 1/2* [r2,1^2-K2-K1;
-         *                r3,1^2-K3-K1;
-         *                r4.1^2-K4-K1]
-         */
-
         /* Gather all the collected data: AP coordinates and distances */
         Point coordAP1 = algInputList.get(0).coordinatesAP;
         Point coordAP2 = algInputList.get(1).coordinatesAP;
@@ -225,7 +241,6 @@ public class LSAlgorithm {
 
 
         /* Generation of Matrix A and vector b */
-
         double [][]matrixA = new double[][]{
 
                 {coordAP2.x - coordAP1.x, coordAP2.y - coordAP1.y, r2_1},
@@ -243,9 +258,11 @@ public class LSAlgorithm {
         DenseMatrix64F b = new DenseMatrix64F(3,1, false, vectorB);
         CommonOps.scale(0.5,b); //1/2*b
 
+        /* Generation of solution vector x */
         DenseMatrix64F x = new DenseMatrix64F(3,1);
 
         /* Linear Solver Least Square */
+
         LinearSolver<DenseMatrix64F> solver = LinearSolverFactory.leastSquares(3, 3);
 
         if( !solver.setA(A) ) {
@@ -257,29 +274,154 @@ public class LSAlgorithm {
 
         solver.solve(b,x);
 
-        return new Point( (int) x.get(0), (int) x.get(1));
+        double xUserPos = x.get(0);
+        double yUserPos = x.get(1);
+
+        return new Point((int)xUserPos, (int)yUserPos);
     }
+
+    /**
+     * Estimates user position by applying an hyperbolic algorithm based on linearisation and
+     * Weighted Least Square approach:
+     *
+     *      From "Weighted Least Square Techniques for Improved RSS based location"  with BS1
+     *      as fixed BS.
+     *
+     *          [(x2-x1) (y2-y1) r2,1;
+     *      A = (x3-x1) (y3-y1) r3,1;
+     *          (x4-x1) (y4-y1) r4,1]
+     *
+     *
+     *      b = 1/2* [r2,1^2-K2-K1;
+     *                r3,1^2-K3-K1;
+     *                r4.1^2-K4-K1]
+     *
+     *      S = [Var(r1²)+Var(r2²) Var(r1²) Var(r1²);
+     *           Var(r1²) Var(r1²)+Var(r3²) Var(r1²);
+     *           Var(r1²) Var(r1²) Var(r1²)+Var(r4²)]
+     *
+     *      x = (A'*S^-1*A)^-1*A'*S^−1*b
+     *
+     *      x = [x; y; r1]
+     *
+     * @param algInputList List of APAlgorithmData objects with the 4 AP data (BSSID - estimated
+     *                     distance - RSS)
+     * @return User position estimated
+     */
     private Point weightedHyperbolicAlgorithm(List<APAlgorithmData> algInputList) {
-        return null;
+        /* Gather all the collected data: AP coordinates and distances */
+        Point coordAP1 = algInputList.get(0).coordinatesAP;
+        Point coordAP2 = algInputList.get(1).coordinatesAP;
+        Point coordAP3 = algInputList.get(2).coordinatesAP;
+        Point coordAP4 = algInputList.get(3).coordinatesAP;
+
+        double distAP1 = algInputList.get(0).distance;
+        double distAP2 = algInputList.get(1).distance;
+        double distAP3 = algInputList.get(2).distance;
+        double distAP4 = algInputList.get(3).distance;
+
+        // ri_j = ri - rj
+        double r2_1 = distAP2 - distAP1;
+        double r3_1 = distAP3 - distAP1;
+        double r4_1 = distAP4 - distAP1;
+
+        // Ki = xi^2 + yi^2
+        double K1 = Math.pow(coordAP1.x, 2) + Math.pow(coordAP1.y, 2);
+        double K2 = Math.pow(coordAP2.x, 2) + Math.pow(coordAP2.y, 2);
+        double K3 = Math.pow(coordAP3.x, 2) + Math.pow(coordAP3.y, 2);
+        double K4 = Math.pow(coordAP4.x, 2) + Math.pow(coordAP4.y, 2);
+
+
+        /* Generation of Matrix A and vector b */
+        double [][]matrixA = new double[][]{
+
+                {coordAP2.x - coordAP1.x, coordAP2.y - coordAP1.y, r2_1},
+                {coordAP3.x - coordAP1.x, coordAP3.y - coordAP1.y, r3_1},
+                {coordAP4.x - coordAP1.x, coordAP4.y - coordAP1.y, r4_1}};
+        DenseMatrix64F A = new DenseMatrix64F(matrixA);
+        CommonOps.changeSign(A); // A is negative
+
+        double []vectorB = new double[]{
+                Math.pow(r2_1, 2) - K2 + K1,
+                Math.pow(r3_1, 2) - K3 + K1,
+                Math.pow(r4_1, 2) - K4 + K1
+
+        };
+        DenseMatrix64F b = new DenseMatrix64F(3,1, false, vectorB);
+        CommonOps.scale(0.5,b); //1/2*b
+
+        /* Generation of solution vector x */
+        DenseMatrix64F x = new DenseMatrix64F(3,1);
+
+        /* Generation of Matrix S of Variances */
+        double [][] matrixS = new double [][]{
+                {Math.pow(distAP1,4) + Math.pow(distAP2,4), Math.pow(distAP1,4),
+                        Math.pow(distAP1,4)},
+                {Math.pow(distAP1,4), Math.pow(distAP1,4) + Math.pow(distAP3,4),
+                        Math.pow(distAP1,4)},
+                {Math.pow(distAP1,4), Math.pow(distAP1,4), Math.pow(distAP1,
+                        4) +  Math.pow(distAP4,4)},
+        };
+
+        DenseMatrix64F S = new DenseMatrix64F(matrixS);
+
+        DenseMatrix64F SInv = new DenseMatrix64F(3,3);
+        CommonOps.invert(S, SInv);
+
+
+        // WEIGHTED LEAST SQUARE
+
+        // A' = S^-1*A
+        DenseMatrix64F APrime = new DenseMatrix64F(3,3);
+        CommonOps.mult(SInv, A, APrime);
+
+        // b' = W*b
+        DenseMatrix64F bPrime = new DenseMatrix64F(3,1);
+        CommonOps.mult(SInv, b, bPrime);
+
+
+        /** Weighted Solver Least Square */
+
+        LinearSolver<DenseMatrix64F> solver = LinearSolverFactory.leastSquares(3, 3);
+
+        if( !solver.setA(APrime) ) {
+            throw new IllegalArgumentException("Singular matrix");
+        }
+
+        if( solver.quality() <= 1e-8 )
+            throw new IllegalArgumentException("Nearly singular matrix");
+
+        solver.solve(bPrime,x);
+
+        double xUserPosW = x.get(0);
+        double yUserPosW = x.get(1);
+
+        return new Point((int)xUserPosW, (int)yUserPosW);
     }
 
-    private Point circularAlgorithm(List<APAlgorithmData> algInputList) {
-        /**
-         * CIRCULAR ALGORITHM:
-         *      Radio Tracking of ORS with random BS as fixed BS.
-         *
-         *      A =   [(x2-x1) (y2-y1);
-         *             (x3-x1) (y3-y1);
-         *             (x4-x1) (y4-y1)]
-         *
-         *      x = [x;
-         *           y]
-         *
-         *      b = 1/2* [b21;
-         *                b32;
-         *                b41]
-         */
 
+    /**
+     * Estimates user position by applying a circular algorithm based on linearisation and
+     * Least Square approach:
+     *
+     *      From "Radio Tracking of ORS" with BS1 as fixed BS.
+     *
+     *      A =   [(x2-x1) (y2-y1);
+     *             (x3-x1) (y3-y1);
+     *             (x4-x1) (y4-y1)]
+     *
+     *      b = 1/2 * [b21; b32; b41]
+     *
+     *      x = (A'A)^-1*A'*b
+     *
+     *      x = [x-x1; y-y1]
+     *
+     * @param algInputList List of APAlgorithmData objects with the 4 AP data (BSSID - estimated
+     *                     distance - RSS)
+     * @return User position estimated
+     *
+     */
+    private Point circularAlgorithm(List<APAlgorithmData> algInputList) {
         /* Gather all the collected data: AP coordinates and distances */
 
         Point coordAP1 = algInputList.get(0).coordinatesAP;
@@ -305,7 +447,6 @@ public class LSAlgorithm {
 
 
         /* Generation of Matrix A and vector b */
-
         double [][]matrixA = new double[][]{
 
                 {coordAP2.x - coordAP1.x, coordAP2.y - coordAP1.y},
@@ -319,6 +460,7 @@ public class LSAlgorithm {
         DenseMatrix64F b = new DenseMatrix64F(3,1, false, vectorB);
         CommonOps.scale(0.5,b); //1/2*b
 
+        /* Generation of solution vector x */
         DenseMatrix64F x = new DenseMatrix64F(2,1);
 
 
@@ -334,12 +476,37 @@ public class LSAlgorithm {
 
         solver.solve(b,x);
 
-        double xUserPos = x.get(0) + coordAP1.x;
-        double yUserPos = x.get(1) + coordAP1.y;
+        double xUserPos = x.get(0) + coordAP1.x; // x = [x-x1; y-y1]
+        double yUserPos = x.get(1) + coordAP1.y; // x = [x-x1; y-y1]
 
         return new Point((int)xUserPos, (int)yUserPos);
     }
 
+    /**
+     * Estimates user position by applying a circular algorithm based on linearisation and
+     * Weighted Least Square approach:
+     *
+     *      From "Weighted Least Square Techniques for Improved RSS based location"  with BS1
+     *      as fixed BS.
+     *
+     *      A =   [(x2-x1) (y2-y1);
+     *             (x3-x1) (y3-y1);
+     *             (x4-x1) (y4-y1)]
+     *
+     *      b = 1/2 * [b21; b32; b41]
+     *
+     *      S = [Var(r1²)+Var(r2²) Var(r1²) Var(r1²);
+     *           Var(r1²) Var(r1²)+Var(r3²) Var(r1²);
+     *           Var(r1²) Var(r1²) Var(r1²)+Var(r4²)]
+     *
+     *      x = (A'*S^-1*A)^-1*A'*S^−1*b
+     *
+     *      x = [x-x1; y-y1]
+     *
+     * @param algInputList List of APAlgorithmData objects with the 4 AP data (BSSID - estimated
+     *                     distance - RSS)
+     * @return User position estimated
+     */
     private Point weightedCircularAlgorithm(List<APAlgorithmData> algInputList) {
         /* Gather all the collected data: AP coordinates and distances */
 

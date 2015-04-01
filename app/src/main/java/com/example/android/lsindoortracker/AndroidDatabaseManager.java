@@ -1,5 +1,4 @@
-package com.example.android.lsindoortracker;//add your package name here example: package com.example.dbm;
-
+package com.example.android.lsindoortracker;
 //all required import files
 import android.app.Activity;
 import android.app.AlertDialog;

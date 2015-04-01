@@ -3,7 +3,7 @@ package com.example.android.lsindoortracker;
 import android.graphics.Point;
 
 /**
- * Created by raul on 19.3.2015.
+ * Algorithm data needed to face Least Square algorithm stage.
  */
 public class APAlgorithmData {
     public String bssid;

@@ -158,7 +158,9 @@ public class MapViewActivity extends Activity {
      */
     private void setScanningTask(){
         mIdBssidApSelected = 3; // By default, AP2 is chosen to provide pathloss model
-        mPosAlgSelected = 4; // By default, approach selected is Circular positioning (WLS)
+
+        /* Hyperbolic = 0, Weighted Hyperbolic = 1, Circular = 2, Weighted Circular = 3 */
+        mPosAlgSelected = 3; // By default, approach selected is Weighted Circular approach
         mWifi = (WifiManager) getSystemService(getApplicationContext().WIFI_SERVICE);
         mLSAlgorithm = new LSAlgorithm(this);
         mTimer = new Timer();
@@ -281,14 +283,15 @@ public class MapViewActivity extends Activity {
                 dialogBssid();
                 return true;
             case R.id.action_position_algorithm:
-                // Dialog with 4 options
+                // Dialog with 4 options - single choice
+                dialogPositionAlgorithm();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
     }
 
-    /** Asks for chosen AP which will provide pathloss model */
+    /** Asks for desired AP which will provide pathloss model */
     private void dialogBssid() {
         // Set up the input
         final EditText input = new EditText(this);
@@ -310,6 +313,33 @@ public class MapViewActivity extends Activity {
                         dialog.cancel();
                         // code = 0 -> error
                         mIdBssidApSelected = 0;
+                    }
+                })
+                .show();
+    }
+    /** Asks for desired positioning algorithm used for estimating user position */
+    private void dialogPositionAlgorithm(){
+        final CharSequence[] choiceList =
+                {"Hyperbolic approach", "Weighted Hyperbolic approach" , "Circular approach" ,
+                        "Weighted Circular Approach" };
+
+        new AlertDialog.Builder(this)
+                .setTitle("Select desired positioning approach")
+                        // Set up the choices
+                .setSingleChoiceItems(
+                choiceList,
+                -1, // No preview choice selected
+                new DialogInterface.OnClickListener() {
+
+                    @Override
+                    public void onClick(
+                            DialogInterface dialog,
+                            int which) {
+                        dialog.dismiss();
+                        mPosAlgSelected = which;
+                        Toast.makeText( getBaseContext(), choiceList[which] + " selected",
+                                Toast.LENGTH_SHORT)
+                                .show();
                     }
                 })
                 .show();
