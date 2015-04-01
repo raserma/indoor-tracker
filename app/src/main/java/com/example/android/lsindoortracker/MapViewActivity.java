@@ -74,6 +74,7 @@ public class MapViewActivity extends Activity {
     private int mNumberProcessingThreads = 0;
     private LSAlgorithm mLSAlgorithm;
     private int mIdBssidApSelected;
+    private int mPosAlgSelected;
     public static final int UPDATE_MAP = 1;
     public static final int SCAN_INTERVAL = 3000; // 3 seconds
     public static final int SCAN_DELAY = 1000; // 1 second
@@ -157,6 +158,7 @@ public class MapViewActivity extends Activity {
      */
     private void setScanningTask(){
         mIdBssidApSelected = 3; // By default, AP2 is chosen to provide pathloss model
+        mPosAlgSelected = 4; // By default, approach selected is Circular positioning (WLS)
         mWifi = (WifiManager) getSystemService(getApplicationContext().WIFI_SERVICE);
         mLSAlgorithm = new LSAlgorithm(this);
         mTimer = new Timer();
@@ -205,7 +207,8 @@ public class MapViewActivity extends Activity {
                     int Low = 0;
                     int High = 150;
                     int R = r.nextInt(High-Low) + Low;*/
-                     mUserPosition = mLSAlgorithm.getUserPosition(results, mIdBssidApSelected);
+                     mUserPosition = mLSAlgorithm.getUserPosition(results, mIdBssidApSelected,
+                             mPosAlgSelected);
                     /* Call the UPDATE_MAP case method of UI Handler with user position on it */
                     Message msg = mUIHandler.obtainMessage(UPDATE_MAP, mUserPosition);
                     mUIHandler.sendMessage(msg);
@@ -276,6 +279,9 @@ public class MapViewActivity extends Activity {
                 return true;
             case R.id.action_pathloss_model:
                 dialogBssid();
+                return true;
+            case R.id.action_position_algorithm:
+                // Dialog with 4 options
                 return true;
             default:
                 return super.onOptionsItemSelected(item);

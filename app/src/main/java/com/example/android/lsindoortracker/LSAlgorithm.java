@@ -32,7 +32,8 @@ public class LSAlgorithm {
      * @return Point object with AP position
      *         Point(-10, results.size()) if acquired APs < required AP for LS
      */
-    public Point getUserPosition(List<ScanResult> results, int idBssidApSelected){
+    public Point getUserPosition(List<ScanResult> results, int idBssidApSelected, int
+            posAlgSelected){
         IndoorTrackerDatabaseHandler apdbhandler =  new IndoorTrackerDatabaseHandler
                 (mapViewActivityContext);
 
@@ -56,9 +57,21 @@ public class LSAlgorithm {
             List<APAlgorithmData> algorithmInputDataList
                     = translatesRSStoDistance (results, idBssidApSelected);
 
-
-            /* Least Square algorithm */
-            Point userPosition = leastSquareAlgorithm(algorithmInputDataList);
+            Point userPosition = new Point(0, 0);
+            switch(posAlgSelected) {
+                case 1: // Hyperbolic algorithm
+                    userPosition = hyperbolicAlgorithm (algorithmInputDataList);
+                    break;
+                case 2: // Weighted Hyperbolic algorithm
+                    userPosition = weightedHyperbolicAlgorithm(algorithmInputDataList);
+                    break;
+                case 3: // Circular algorithm
+                    userPosition = circularAlgorithm(algorithmInputDataList);
+                    break;
+                case 4: // Weighted Circular algorithm
+                    userPosition = weightedCircularAlgorithm(algorithmInputDataList);
+                    break;
+            }
             return userPosition;
         }
     }
@@ -391,5 +404,19 @@ public class LSAlgorithm {
         double xUserPosW = x.get(0) + coordAP1.x;
         double yUserPosW = x.get(1) + coordAP1.y;
         return new Point((int)xUserPosW, (int)yUserPosW);
+    }
+
+
+    private Point hyperbolicAlgorithm(List<APAlgorithmData> algorithmInputDataList) {
+        return null;
+    }
+    private Point weightedHyperbolicAlgorithm(List<APAlgorithmData> algorithmInputDataList) {
+        return null;
+    }
+    private Point circularAlgorithm(List<APAlgorithmData> algorithmInputDataList) {
+        return null;
+    }
+    private Point weightedCircularAlgorithm(List<APAlgorithmData> algorithmInputDataList) {
+        return null;
     }
 }

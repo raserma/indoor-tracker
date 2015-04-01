@@ -11,4 +11,9 @@
           android:title="@string/action_pathloss_model"
           android:orderInCategory="100"
           android:showAsAction="never"/>
+
+    <item android:id="@+id/action_position_algorithm"
+          android:title="@string/action_position_algorithm"
+          android:orderInCategory="100"
+          android:showAsAction="never"/>
 </menu>
